@@ -30,7 +30,7 @@ def add_dir(dir_name):
     """
     新增資料夾，資料夾名稱為每集的標題
     """
-    path = os.path.join(CWD,dir_name)
+    path = os.path.join(BOOK_PATH,dir_name)
     if not os.path.isdir(path):
         os.mkdir(path)
 
@@ -41,10 +41,10 @@ def get_url_list(book_url,total_page):
     製造其他頁數的連結
     return url_list
     """
-    url_list = []
+    
     # "http://www.dm5.com/m907153/' -> 'http://www.dm5.com/m907153-p'
-    url_template = re.sub(r'm\d+(/)$','-p',book_url)
-    url_list = [url_template + str(num) for num in range(total_page)]
+    url_template = re.sub(r'/$','-p',book_url)
+    url_list = [url_template + str(num+2) for num in range(total_page-1)]
 
     print(url_list)
     return (url_list)
@@ -74,13 +74,10 @@ def download_comic_book(book_url,dir_path):
 
 
 
-
-
-
-
-CWD = os.path.join(os.getcwd(),"comic book") #資料夾位置
-chrome_path = r"C:\selenium_driver_chrome\chromedriver.exe" #chromedriver.exe執行檔所存在的路徑
-path_to_extension = r'C:\selenium_driver_chrome\3.56.0_0'
+CWD = os.getcwd() #程式所在路徑
+BOOK_PATH = os.path.join(CWD,"comic book") #漫畫資料夾路徑
+chrome_path = os.path.join(CWD,r"selenium_driver_chrome\chromedriver.exe") #chromedriver.exe 執行檔所存在的路徑
+path_to_extension = os.path.join(CWD,r'selenium_driver_chrome\3.56.0_0') #adblock 擴充套件路徑
 chrome_options = Options()
 chrome_options.add_argument('load-extension=' + path_to_extension)    
 WEB = webdriver.Chrome(chrome_path,chrome_options=chrome_options)
@@ -97,7 +94,6 @@ for book in book_list:
     download_comic_book(book.book_url,dir_path)
 else:    
     WEB.close()
-
 
 
 
