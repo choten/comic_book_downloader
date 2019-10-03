@@ -37,32 +37,37 @@ def add_dir(dir_name):
     return (path)
 
 def download_comic_book(book_url,dir_path):
-    chrome_path = "C:\\selenium_driver_chrome\\chromedriver.exe" #chromedriver.exe執行檔所存在的路徑
-    path_to_extension = r'C:\selenium_driver_chrome\3.56.0_0'
-    chrome_options = Options()
-    chrome_options.add_argument('load-extension=' + path_to_extension)    
-    web = webdriver.Chrome(chrome_path,chrome_options=chrome_options)
-    web.create_options()
-    web.get(book_url)
+    WEB.get(book_url)
     
-    img_url = web.find_element_by_id('cp_image').get_attribute("src")
+    #下載第一頁的漫畫
+    img_url = WEB.find_element_by_id('cp_image').get_attribute("src")
     refer = book_url
     download_img(img_url,os.path.join(dir_path,'01.png'),refer)
+    #取得其他頁數的連結
 
-    web.close()
 
 
 
 CWD = os.path.join(os.getcwd(),"comic book") #資料夾位置
+chrome_path = r"C:\selenium_driver_chrome\chromedriver.exe" #chromedriver.exe執行檔所存在的路徑
+path_to_extension = r'C:\selenium_driver_chrome\3.56.0_0'
+chrome_options = Options()
+chrome_options.add_argument('load-extension=' + path_to_extension)    
+WEB = webdriver.Chrome(chrome_path,chrome_options=chrome_options)
+WEB.create_options()
 
 #menu_url = "http://www.dm5.com/manhua-zhanguoyaohu/"
-menu_url = "http://www.dm5.com/manhua-menjiewaidejinghaizhiwu/"
+# menu_url = "http://www.dm5.com/manhua-menjiewaidejinghaizhiwu/"
+menu_url = "http://www.dm5.com/manhua-dangxinelingqishi/"
 book_list = get_book_list(menu_url)
 for book in book_list:
     #檢查目錄有沒有此資料夾，若無則新增資料夾    
     dir_path = add_dir(book.title)
 
     download_comic_book(book.book_url,dir_path)
+else:    
+    WEB.close()
+
 
 
 
