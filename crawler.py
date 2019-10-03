@@ -54,7 +54,7 @@ def download(book_url,dir_path,pag_num):
     #下載漫畫的圖片
     img_url = WEB.find_element_by_id('cp_image').get_attribute("src")
     refer = book_url
-    download_img(img_url,os.path.join(dir_path,str(pag_num)+'.png'),refer)
+    download_img(img_url,os.path.join(dir_path,str(pag_num+2)+'.png'),refer)
 
 
 def download_comic_book(book_url,dir_path):
@@ -65,7 +65,7 @@ def download_comic_book(book_url,dir_path):
     refer = book_url
     download_img(img_url,os.path.join(dir_path,'01.png'),refer)
     #下載其他頁的圖片
-    total_page = 2
+    total_page = 3
     #取得其他頁數的連結
     url_list = get_url_list(book_url,total_page)
 
