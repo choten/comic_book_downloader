@@ -36,14 +36,44 @@ def add_dir(dir_name):
 
     return (path)
 
+def get_url_list(book_url,total_page):
+    """
+    製造其他頁數的連結
+    return url_list
+    """
+    url_list = []
+    # "http://www.dm5.com/m907153/' -> 'http://www.dm5.com/m907153-p'
+    url_template = re.sub(r'm\d+(/)$','-p',book_url)
+    url_list = [url_template + str(num) for num in range(total_page)]
+
+    print(url_list)
+    return (url_list)
+
+def download(book_url,dir_path,pag_num):
+    WEB.get(book_url)
+    #下載漫畫的圖片
+    img_url = WEB.find_element_by_id('cp_image').get_attribute("src")
+    refer = book_url
+    download_img(img_url,os.path.join(dir_path,str(pag_num)+'.png'),refer)
+
+
 def download_comic_book(book_url,dir_path):
     WEB.get(book_url)
     
-    #下載第一頁的漫畫
+    #下載漫畫的第一頁圖片
     img_url = WEB.find_element_by_id('cp_image').get_attribute("src")
     refer = book_url
     download_img(img_url,os.path.join(dir_path,'01.png'),refer)
+    #下載其他頁的圖片
+    total_page = 2
     #取得其他頁數的連結
+    url_list = get_url_list(book_url,total_page)
+
+    for pag_num,url in enumerate(url_list):
+        download(url,dir_path,pag_num)
+
+
+
 
 
 
@@ -61,7 +91,7 @@ WEB.create_options()
 menu_url = "http://www.dm5.com/manhua-dangxinelingqishi/"
 book_list = get_book_list(menu_url)
 for book in book_list:
-    #檢查目錄有沒有此資料夾，若無則新增資料夾    
+    #檢查目錄有沒有此資料夾，若無則新增資料夾
     dir_path = add_dir(book.title)
 
     download_comic_book(book.book_url,dir_path)
