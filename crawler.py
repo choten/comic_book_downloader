@@ -4,7 +4,11 @@ import requests
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from opencc import OpenCC
+import timeit
 
 class Volume:
     """
@@ -24,9 +28,10 @@ def init_web_driver():
     chrome_options = Options()
     chrome_options.add_argument('load-extension=' + path_to_extension)    
     WEB = webdriver.Chrome(chrome_path,options=chrome_options)
+    # WEB = webdriver.Chrome(chrome_path)
     return (WEB)
 
-def crawl_menu_page(book_path,menu_uel):
+def crawl_menu_page(book_path,menu_url):
     """
     爬 menu 網頁，抓取標題、封面、每集volume的url，並回傳 (漫畫路徑,volumes列表)
     """
@@ -78,10 +83,16 @@ def crawl_book_page(book_url,dir_path,pag_num):
     前往url網址，爬取圖片的url並下載 
     """
     WEB.get(book_url)
-    #下載漫畫的圖片
-    img_url = WEB.find_element_by_id('cp_image').get_attribute("src")
-    refer = book_url
-    download_img(img_url,os.path.join(dir_path,str(pag_num+2)+'.png'),refer)
+    try:
+        WebDriverWait(WEB, 10).until(
+            EC.presence_of_element_located((By.ID, "cp_image"))
+        )
+        #下載漫畫的圖片
+        img_url = WEB.find_element_by_id('cp_image').get_attribute("src")
+        refer = book_url
+        download_img(img_url,os.path.join(dir_path,str(pag_num+2)+'.png'),refer)
+    except:
+        print(book_url+'下載失敗')
 
 def create_page_url_list(book_url,total_page):
     """
@@ -138,6 +149,25 @@ def convert_s2t(str_input):
     str_output = cc.convert(str_input)
     return (str_output)
 
+def app_start():
+    """
+    程式起始點
+    """
+    BOOK_PATH = os.path.join(CURRENT_DIR,"comic book") #漫畫資料夾路徑
+    menu_url = "http://www.dm5.com/manhua-dangxinelingqishi/"
+
+    result = crawl_menu_page(BOOK_PATH,menu_url)
+    BOOK_PATH = result[0]
+    volume_list = result[1]
+
+    for book in volume_list:
+        #檢查目錄有沒有此資料夾，若無則新增資料夾
+        dir_path = create_directory(BOOK_PATH,book.title)
+
+        download_volume(book.book_url,dir_path,book.total_page)
+    else:    
+        WEB.close()
+
 CURRENT_DIR = os.getcwd() #程式所在路徑
 ROOT_URL = "http://www.dm5.com" #網頁的根目錄
 
@@ -145,20 +175,9 @@ ROOT_URL = "http://www.dm5.com" #網頁的根目錄
 WEB = init_web_driver()
 WEB.create_options()
 
-BOOK_PATH = os.path.join(CURRENT_DIR,"comic book") #漫畫資料夾路徑
-menu_url = "http://www.dm5.com/manhua-dangxinelingqishi/"
+t = timeit.timeit(stmt="app_start()", setup="from  __main__ import app_start", number=1)
+print(t)
 
-result = crawl_menu_page(BOOK_PATH,menu_url)
-BOOK_PATH = result[0]
-volume_list = result[1]
-
-for book in volume_list:
-    #檢查目錄有沒有此資料夾，若無則新增資料夾
-    dir_path = create_directory(BOOK_PATH,book.title)
-
-    download_volume(book.book_url,dir_path,book.total_page)
-else:    
-    WEB.close()
 
 
 
