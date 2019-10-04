@@ -4,6 +4,7 @@ import requests
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from opencc import OpenCC
 
 class Volume:
     """
@@ -35,6 +36,7 @@ def crawl_menu_page(book_path,menu_uel):
     #取得漫畫 title
     p_tag = soup.select_one("div.banner_detail_form > div.info > p.title")
     title = re.sub(r'\s|(\d{1,2}\.\d{0,1}分)','',p_tag.text)
+    title = convert_s2t(title)
 
     #新增 [漫畫名稱]資料夾
     book_path = create_directory(book_path,title)
@@ -51,6 +53,46 @@ def crawl_menu_page(book_path,menu_uel):
     volume_list = [ Volume(ROOT_URL+a_tag["href"] ,trim(a_tag.text),extract_total_page(a_tag.text)) for a_tag in a_tags]
 
     return (book_path,volume_list)
+
+def download_volume(book_url,dir_path,total_page):
+    """
+    下載這集的漫畫
+    """
+    WEB.get(book_url)
+    
+    #下載第一頁的圖片
+    img_url = WEB.find_element_by_id('cp_image').get_attribute("src")
+    refer = book_url
+    pic_path = os.path.join(dir_path,'1.png')
+    download_img(img_url,pic_path,refer)
+    
+    #取得其他頁數的連結
+    url_list = create_page_url_list(book_url,total_page)
+
+    #下載其他頁的圖片
+    for pag_num,url in enumerate(url_list):
+        crawl_book_page(url,dir_path,pag_num)
+
+def crawl_book_page(book_url,dir_path,pag_num):
+    """
+    前往url網址，爬取圖片的url並下載 
+    """
+    WEB.get(book_url)
+    #下載漫畫的圖片
+    img_url = WEB.find_element_by_id('cp_image').get_attribute("src")
+    refer = book_url
+    download_img(img_url,os.path.join(dir_path,str(pag_num+2)+'.png'),refer)
+
+def create_page_url_list(book_url,total_page):
+    """
+    製造其他頁數的連結
+    """    
+    # 轉換範例:
+    # 'http://www.dm5.com/m907153/' -> 'http://www.dm5.com/m907153-p'
+    url_template = re.sub(r'/$','-p',book_url)
+    url_list = [url_template + str(num+2) for num in range(total_page-1)]
+
+    return (url_list)
 
 def download_img(img_url,pic_path,referer):
     """
@@ -75,9 +117,10 @@ def create_directory(book_path,dir_name):
 
 def trim(str_input):
     """
-    去除空白字元
+    去除空白字元，並且簡體轉繁體
     """
-    str_output = re.sub(r'\s','',str_input)
+    trimed_input = re.sub(r'\s','',str_input)
+    str_output = convert_s2t(trimed_input)
     return (str_output)
 
 def extract_total_page(str_title):
@@ -87,45 +130,13 @@ def extract_total_page(str_title):
     totalPage = int(re.findall(r'（(\d{1,3})P）|$',str_title)[0])
     return (totalPage)
 
-def create_page_url_list(book_url,total_page):
+def convert_s2t(str_input):
     """
-    製造其他頁數的連結
-    """    
-    # 轉換範例:
-    # 'http://www.dm5.com/m907153/' -> 'http://www.dm5.com/m907153-p'
-    url_template = re.sub(r'/$','-p',book_url)
-    url_list = [url_template + str(num+2) for num in range(total_page-1)]
-
-    return (url_list)
-
-def crawl_book_page(book_url,dir_path,pag_num):
+    簡轉繁，並轉換大陸用語為台灣用語
     """
-    前往url網址，爬取圖片的url並下載 
-    """
-    WEB.get(book_url)
-    #下載漫畫的圖片
-    img_url = WEB.find_element_by_id('cp_image').get_attribute("src")
-    refer = book_url
-    download_img(img_url,os.path.join(dir_path,str(pag_num+2)+'.png'),refer)
-
-def download_volume(book_url,dir_path,total_page):
-    """
-    下載這集的漫畫
-    """
-    WEB.get(book_url)
-    
-    #下載第一頁的圖片
-    img_url = WEB.find_element_by_id('cp_image').get_attribute("src")
-    refer = book_url
-    pic_path = os.path.join(dir_path,'1.png')
-    download_img(img_url,pic_path,refer)
-    
-    #取得其他頁數的連結
-    url_list = create_page_url_list(book_url,total_page)
-
-    #下載其他頁的圖片
-    for pag_num,url in enumerate(url_list):
-        crawl_book_page(url,dir_path,pag_num)
+    cc = OpenCC('s2twp') #設定簡轉繁，並轉換大陸用語為台灣用語
+    str_output = cc.convert(str_input)
+    return (str_output)
 
 CURRENT_DIR = os.getcwd() #程式所在路徑
 ROOT_URL = "http://www.dm5.com" #網頁的根目錄
@@ -144,7 +155,7 @@ volume_list = result[1]
 for book in volume_list:
     #檢查目錄有沒有此資料夾，若無則新增資料夾
     dir_path = create_directory(BOOK_PATH,book.title)
-    
+
     download_volume(book.book_url,dir_path,book.total_page)
 else:    
     WEB.close()
