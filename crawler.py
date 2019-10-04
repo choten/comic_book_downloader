@@ -168,6 +168,13 @@ def app_start():
     else:    
         WEB.close()
 
+def test():
+    """
+    測試程式碼
+    """
+    t = timeit.timeit(stmt="app_start()", setup="from  __main__ import app_start", number=1)
+    print(t)
+
 CURRENT_DIR = os.getcwd() #程式所在路徑
 ROOT_URL = "http://www.dm5.com" #網頁的根目錄
 
@@ -175,5 +182,4 @@ ROOT_URL = "http://www.dm5.com" #網頁的根目錄
 WEB = init_web_driver()
 WEB.create_options()
 
-t = timeit.timeit(stmt="app_start()", setup="from  __main__ import app_start", number=1)
-print(t)
+test()
