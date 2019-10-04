@@ -177,11 +177,3 @@ WEB.create_options()
 
 t = timeit.timeit(stmt="app_start()", setup="from  __main__ import app_start", number=1)
 print(t)
-
-
-
-
-
-    
-
-
