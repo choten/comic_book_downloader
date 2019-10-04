@@ -9,10 +9,10 @@ class Volume:
     """
     漫畫物件
     """
-    def __init__(self, href, txt,number):
+    def __init__(self, href, txt,total_page):
         self.book_url = href
         self.title = txt
-        self.total_page = number
+        self.total_page = total_page
 
 def init_web_driver():
     """
@@ -60,7 +60,6 @@ def get_url_list(book_url,total_page):
     url_template = re.sub(r'/$','-p',book_url)
     url_list = [url_template + str(num+2) for num in range(total_page-1)]
 
-    print(url_list)
     return (url_list)
 
 def download(book_url,dir_path,pag_num):
@@ -71,7 +70,7 @@ def download(book_url,dir_path,pag_num):
     download_img(img_url,os.path.join(dir_path,str(pag_num+2)+'.png'),refer)
 
 
-def download_comic_book(book_url,dir_path):
+def download_comic_book(book_url,dir_path,total_page):
     WEB.get(book_url)
     
     #下載漫畫的第一頁圖片
@@ -80,7 +79,7 @@ def download_comic_book(book_url,dir_path):
     pic_path = os.path.join(dir_path,'01.png')
     download_img(img_url,pic_path,refer)
     #下載其他頁的圖片
-    total_page = 3
+    # total_page = 3
     #取得其他頁數的連結
     url_list = get_url_list(book_url,total_page)
 
@@ -102,7 +101,6 @@ soup = BeautifulSoup(html.text,"html.parser") #將網頁資料以html.parser
 #取得漫畫 title
 p_tag = soup.select_one("div.banner_detail_form > div.info > p.title")
 title = re.sub(r'\s|(\d{1,2}\.\d{0,1}分)','',p_tag.text)
-print(title)
 
 #新增 [漫畫名稱]資料夾
 BOOK_PATH = create_directory(BOOK_PATH,title)
@@ -110,19 +108,19 @@ BOOK_PATH = create_directory(BOOK_PATH,title)
 #下載封面 img
 img_tag = soup.select_one("section.banner_detail > div.banner_border_bg > img.banner_detail_bg")
 cover_url = img_tag['src']
-pic_path = os.path.join(BOOK_PATH,'cover.png')
+pic_path = os.path.join(BOOK_PATH,'封面.png')
 referer = menu_url
 download_img(cover_url,pic_path,referer)
 
 #取得 volumes 連結
 a_tags = soup.select("div #chapterlistload li > a")
-volume_list = [ Volume("http://www.dm5.com"+a_tag["href"] ,re.sub(r'\s','',a_tag.text),10) for a_tag in a_tags]
+volume_list = [ Volume("http://www.dm5.com"+a_tag["href"] ,re.sub(r'\s','',a_tag.text),int(re.findall(r'（(\d{1,3})P）|$',a_tag.text)[0])) for a_tag in a_tags]
 
 for book in volume_list:
     #檢查目錄有沒有此資料夾，若無則新增資料夾
     dir_path = create_directory(BOOK_PATH,book.title)
 
-    download_comic_book(book.book_url,dir_path)
+    download_comic_book(book.book_url,dir_path,book.total_page)
 else:    
     WEB.close()
 
