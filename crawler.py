@@ -24,16 +24,38 @@ def init_web_driver():
     chrome_options.add_argument('load-extension=' + path_to_extension)    
     WEB = webdriver.Chrome(chrome_path,options=chrome_options)
     return (WEB)
-    
 
-def get_book_list(url):
-    html = requests.get(url)
+def crawl_menu_page(book_path,menu_uel):
+    """
+    爬 menu 網頁，抓取標題、封面、每集volume的url，並回傳 (漫畫路徑,volumes列表)
+    """
+    html = requests.get(menu_url)
     soup = BeautifulSoup(html.text,"html.parser") #將網頁資料以html.parser
-    sel = soup.select("div #chapterlistload li > a")
-    book_list = [ Volume("http://www.dm5.com"+s["href"] ,re.sub(r'\s','',s.text),10) for s in sel]
-    return (book_list)
+
+    #取得漫畫 title
+    p_tag = soup.select_one("div.banner_detail_form > div.info > p.title")
+    title = re.sub(r'\s|(\d{1,2}\.\d{0,1}分)','',p_tag.text)
+
+    #新增 [漫畫名稱]資料夾
+    book_path = create_directory(book_path,title)
+
+    #下載封面 img
+    img_tag = soup.select_one("section.banner_detail > div.banner_border_bg > img.banner_detail_bg")
+    cover_url = img_tag['src']
+    pic_path = os.path.join(book_path,'封面.png')
+    referer = menu_url
+    download_img(cover_url,pic_path,referer)
+
+    #取得 volumes 連結
+    a_tags = soup.select("div #chapterlistload li > a")
+    volume_list = [ Volume(ROOT_URL+a_tag["href"] ,trim(a_tag.text),extract_total_page(a_tag.text)) for a_tag in a_tags]
+
+    return (book_path,volume_list)
 
 def download_img(img_url,pic_path,referer):
+    """
+    下載圖片，referer : 當前網頁的url，requset 時要放在 header
+    """
     headers = {'referer':referer,'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36'}
     pic = requests.get(img_url,headers = headers)
     tmp_img = pic.content
@@ -43,7 +65,7 @@ def download_img(img_url,pic_path,referer):
 
 def create_directory(book_path,dir_name):
     """
-    檢查book_path 之下有沒有[dir_name]資料夾，若無則新增，並回傳新增後的路徑
+    檢查book_path 之下有沒有此 [dir_name] 資料夾，若無則新增，並回傳新增後的路徑
     """
     path = os.path.join(book_path,dir_name)
     if not os.path.isdir(path):
@@ -51,76 +73,79 @@ def create_directory(book_path,dir_name):
 
     return (path)
 
-def get_url_list(book_url,total_page):
+def trim(str_input):
+    """
+    去除空白字元
+    """
+    str_output = re.sub(r'\s','',str_input)
+    return (str_output)
+
+def extract_total_page(str_title):
+    """
+    從漫畫標題擷取出總頁數
+    """
+    totalPage = int(re.findall(r'（(\d{1,3})P）|$',str_title)[0])
+    return (totalPage)
+
+def create_page_url_list(book_url,total_page):
     """
     製造其他頁數的連結
-    return url_list
     """    
-    # "http://www.dm5.com/m907153/' -> 'http://www.dm5.com/m907153-p'
+    # 轉換範例:
+    # 'http://www.dm5.com/m907153/' -> 'http://www.dm5.com/m907153-p'
     url_template = re.sub(r'/$','-p',book_url)
     url_list = [url_template + str(num+2) for num in range(total_page-1)]
 
     return (url_list)
 
-def download(book_url,dir_path,pag_num):
+def crawl_book_page(book_url,dir_path,pag_num):
+    """
+    前往url網址，爬取圖片的url並下載 
+    """
     WEB.get(book_url)
     #下載漫畫的圖片
     img_url = WEB.find_element_by_id('cp_image').get_attribute("src")
     refer = book_url
     download_img(img_url,os.path.join(dir_path,str(pag_num+2)+'.png'),refer)
 
-
-def download_comic_book(book_url,dir_path,total_page):
+def download_volume(book_url,dir_path,total_page):
+    """
+    下載這集的漫畫
+    """
     WEB.get(book_url)
     
-    #下載漫畫的第一頁圖片
+    #下載第一頁的圖片
     img_url = WEB.find_element_by_id('cp_image').get_attribute("src")
     refer = book_url
-    pic_path = os.path.join(dir_path,'01.png')
+    pic_path = os.path.join(dir_path,'1.png')
     download_img(img_url,pic_path,refer)
-    #下載其他頁的圖片
-    # total_page = 3
+    
     #取得其他頁數的連結
-    url_list = get_url_list(book_url,total_page)
+    url_list = create_page_url_list(book_url,total_page)
 
+    #下載其他頁的圖片
     for pag_num,url in enumerate(url_list):
-        download(url,dir_path,pag_num)
-
+        crawl_book_page(url,dir_path,pag_num)
 
 CURRENT_DIR = os.getcwd() #程式所在路徑
+ROOT_URL = "http://www.dm5.com" #網頁的根目錄
+
 #初始化 web driver
 WEB = init_web_driver()
 WEB.create_options()
 
 BOOK_PATH = os.path.join(CURRENT_DIR,"comic book") #漫畫資料夾路徑
 menu_url = "http://www.dm5.com/manhua-dangxinelingqishi/"
-# book_list = get_book_list(menu_url)
-html = requests.get(menu_url)
-soup = BeautifulSoup(html.text,"html.parser") #將網頁資料以html.parser
 
-#取得漫畫 title
-p_tag = soup.select_one("div.banner_detail_form > div.info > p.title")
-title = re.sub(r'\s|(\d{1,2}\.\d{0,1}分)','',p_tag.text)
-
-#新增 [漫畫名稱]資料夾
-BOOK_PATH = create_directory(BOOK_PATH,title)
-
-#下載封面 img
-img_tag = soup.select_one("section.banner_detail > div.banner_border_bg > img.banner_detail_bg")
-cover_url = img_tag['src']
-pic_path = os.path.join(BOOK_PATH,'封面.png')
-referer = menu_url
-download_img(cover_url,pic_path,referer)
-
-#取得 volumes 連結
-a_tags = soup.select("div #chapterlistload li > a")
-volume_list = [ Volume("http://www.dm5.com"+a_tag["href"] ,re.sub(r'\s','',a_tag.text),int(re.findall(r'（(\d{1,3})P）|$',a_tag.text)[0])) for a_tag in a_tags]
+result = crawl_menu_page(BOOK_PATH,menu_url)
+BOOK_PATH = result[0]
+volume_list = result[1]
 
 for book in volume_list:
     #檢查目錄有沒有此資料夾，若無則新增資料夾
     dir_path = create_directory(BOOK_PATH,book.title)
-
-    download_comic_book(book.book_url,dir_path,book.total_page)
+    
+    download_volume(book.book_url,dir_path,book.total_page)
 else:    
     WEB.close()
 
