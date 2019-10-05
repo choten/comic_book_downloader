@@ -29,6 +29,7 @@ def init_web_driver():
     chrome_options.add_argument('load-extension=' + path_to_extension)    
     WEB = webdriver.Chrome(chrome_path,options=chrome_options)
     WEB.set_window_size(100,100)
+    WEB.minimize_window()
     # WEB = webdriver.Chrome(chrome_path)
     return (WEB)
 
@@ -207,6 +208,6 @@ WEB.create_options()
 
 try:
     app_start()
-except :
+except:
     print("下載失敗")
     input() 
