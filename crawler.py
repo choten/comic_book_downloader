@@ -66,7 +66,7 @@ def crawl_menu_page(book_path,menu_url):
 
     return (book_path,volume_list)
 
-def download_volume(book_url,dir_path,total_page):
+def download_volume(WEB,book_url,dir_path,total_page):
     """
     下載這集的漫畫
     """
@@ -83,9 +83,9 @@ def download_volume(book_url,dir_path,total_page):
 
     #下載其他頁的圖片
     for pag_num,url in enumerate(url_list):
-        crawl_book_page(url,dir_path,pag_num)
+        crawl_book_page(WEB,url,dir_path,pag_num)
 
-def crawl_book_page(book_url,dir_path,pag_num):
+def crawl_book_page(WEB,book_url,dir_path,pag_num):
     """
     前往url網址，爬取圖片的url並下載 
     """
@@ -180,6 +180,10 @@ def app_start():
         input()
         return
     
+    #初始化 web driver
+    WEB = init_web_driver()
+    WEB.create_options()
+    
     result = crawl_menu_page(book_path,menu_url)
     book_path = result[0]
     volume_list = result[1]
@@ -188,7 +192,7 @@ def app_start():
         #檢查目錄有沒有此資料夾，若無則新增資料夾
         dir_path = create_directory(book_path,book.title)
 
-        download_volume(book.book_url,dir_path,book.total_page)
+        download_volume(WEB,book.book_url,dir_path,book.total_page)
     else:    
         WEB.close()
 
@@ -201,10 +205,6 @@ def test():
 
 CURRENT_DIR = os.getcwd() #程式所在路徑
 ROOT_URL = "http://www.dm5.com" #網頁的根目錄
-
-#初始化 web driver
-WEB = init_web_driver()
-WEB.create_options()
 
 try:
     app_start()
