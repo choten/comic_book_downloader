@@ -9,6 +9,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from opencc import OpenCC
 import timeit
+from showprocess import ShowProcess
 
 class Volume:
     """
@@ -77,6 +78,7 @@ def download_volume(WEB,book_url,dir_path,total_page):
     refer = book_url
     pic_path = os.path.join(dir_path,'1.png')
     download_img(img_url,pic_path,refer)
+    PROCESS_BAR.show_process()
     
     #取得其他頁數的連結
     url_list = create_page_url_list(book_url,total_page)
@@ -84,6 +86,7 @@ def download_volume(WEB,book_url,dir_path,total_page):
     #下載其他頁的圖片
     for pag_num,url in enumerate(url_list):
         crawl_book_page(WEB,url,dir_path,pag_num)
+        PROCESS_BAR.show_process()
 
 def crawl_book_page(WEB,book_url,dir_path,pag_num):
     """
@@ -167,6 +170,15 @@ def is_menu_url_valid(menu_url):
     else:
         return True
 
+def sum_total_step(volume_list):
+    """
+    計算漫畫總張數，給進度條計算用
+    """
+    total_stap = 0
+    for book in volume_list:
+        total_stap += book.total_page
+    return (total_stap)
+
 def app_start():
     """
     程式起始點
@@ -188,11 +200,18 @@ def app_start():
     book_path = result[0]
     volume_list = result[1]
 
+    #初始化進度條物件參數
+    max_steps = sum_total_step(volume_list)
+    PROCESS_BAR.max_steps = max_steps
+    PROCESS_BAR.infoDone += book_path
+    print("下載進度")
+    PROCESS_BAR.show_process(0)
+    
     for book in volume_list:
         #檢查目錄有沒有此資料夾，若無則新增資料夾
         dir_path = create_directory(book_path,book.title)
 
-        download_volume(WEB,book.book_url,dir_path,book.total_page)
+        download_volume(WEB,book.book_url,dir_path,book.total_page)        
     else:    
         WEB.close()
 
@@ -205,9 +224,12 @@ def test():
 
 CURRENT_DIR = os.getcwd() #程式所在路徑
 ROOT_URL = "http://www.dm5.com" #網頁的根目錄
+infoDone = '下載完成\n 漫畫存放位置: '
+PROCESS_BAR = ShowProcess(10,infoDone)
 
 try:
     app_start()
-except:
+except Exception as e:
     print("下載失敗")
+    print(e)
     input() 
