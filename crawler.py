@@ -28,6 +28,7 @@ def init_web_driver():
     chrome_options = Options()
     chrome_options.add_argument('load-extension=' + path_to_extension)    
     WEB = webdriver.Chrome(chrome_path,options=chrome_options)
+    WEB.set_window_size(100,100)
     # WEB = webdriver.Chrome(chrome_path)
     return (WEB)
 
@@ -55,6 +56,11 @@ def crawl_menu_page(book_path,menu_url):
 
     #取得 volumes 連結
     a_tags = soup.select("div #chapterlistload li > a")
+    # assert len(a_tags) == 0,"無法取得每集的連結"
+    if len(a_tags) == 0:
+        print("無法取得漫畫的連結")
+        raise Exception
+
     volume_list = [ Volume(ROOT_URL+a_tag["href"] ,trim(a_tag.text),extract_total_page(a_tag.text)) for a_tag in a_tags]
 
     return (book_path,volume_list)
@@ -164,17 +170,22 @@ def app_start():
     """
     程式起始點
     """
-    BOOK_PATH = os.path.join(CURRENT_DIR,"comic book") #漫畫資料夾路徑
-    menu_url = "http://www.dm5.com/manhua-dangxinelingqishi/"
-    menu_url = input("請輸入漫畫網址\n")
-
-    result = crawl_menu_page(BOOK_PATH,menu_url)
-    BOOK_PATH = result[0]
+    book_path = os.path.join(CURRENT_DIR,"comic book") #漫畫資料夾路徑
+    # menu_url = "http://www.dm5.com/manhua-dangxinelingqishi/"
+    menu_url = input("請輸入漫畫網址:\n")
+    
+    if is_menu_url_valid(menu_url) == False:
+        print("失敗! 漫畫網址格式錯誤")
+        input()
+        return
+    
+    result = crawl_menu_page(book_path,menu_url)
+    book_path = result[0]
     volume_list = result[1]
 
     for book in volume_list:
         #檢查目錄有沒有此資料夾，若無則新增資料夾
-        dir_path = create_directory(BOOK_PATH,book.title)
+        dir_path = create_directory(book_path,book.title)
 
         download_volume(book.book_url,dir_path,book.total_page)
     else:    
@@ -194,4 +205,8 @@ ROOT_URL = "http://www.dm5.com" #網頁的根目錄
 WEB = init_web_driver()
 WEB.create_options()
 
-test()
+try:
+    app_start()
+except :
+    print("下載失敗")
+    input() 
