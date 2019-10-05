@@ -149,12 +149,24 @@ def convert_s2t(str_input):
     str_output = cc.convert(str_input)
     return (str_output)
 
+def is_menu_url_valid(menu_url):
+    """
+    驗證 menu url 格式是否正確
+    """
+    pattern  = re.compile(r'^http://www\.dm5\.com/manhua-([a-z]|-)+/?$')
+    result = pattern.fullmatch(menu_url)
+    if result == None:
+        return False
+    else:
+        return True
+
 def app_start():
     """
     程式起始點
     """
     BOOK_PATH = os.path.join(CURRENT_DIR,"comic book") #漫畫資料夾路徑
     menu_url = "http://www.dm5.com/manhua-dangxinelingqishi/"
+    menu_url = input("請輸入漫畫網址\n")
 
     result = crawl_menu_page(BOOK_PATH,menu_url)
     BOOK_PATH = result[0]
