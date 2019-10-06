@@ -27,7 +27,8 @@ def init_web_driver():
     chrome_path = os.path.join(CURRENT_DIR,r"selenium_driver_chrome\chromedriver.exe") #chromedriver.exe 執行檔所存在的路徑
     path_to_extension = os.path.join(CURRENT_DIR,r'selenium_driver_chrome\3.56.0_0') #adblock 擴充套件路徑
     chrome_options = Options()
-    chrome_options.add_argument('load-extension=' + path_to_extension)    
+    chrome_options.add_argument('load-extension=' + path_to_extension)
+    chrome_options.add_argument('--ignore-certificate-errors')
     WEB = webdriver.Chrome(chrome_path,options=chrome_options)
     WEB.set_window_size(100,100)
     WEB.minimize_window()
@@ -199,6 +200,7 @@ def app_start():
     result = crawl_menu_page(book_path,menu_url)
     book_path = result[0]
     volume_list = result[1]
+    volume_list.reverse()
 
     #初始化進度條物件參數
     max_steps = sum_total_step(volume_list)
