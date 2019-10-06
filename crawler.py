@@ -59,10 +59,7 @@ def crawl_menu_page(book_path,menu_url):
 
     #取得 volumes 連結
     a_tags = soup.select("div #chapterlistload li > a")
-    # assert len(a_tags) == 0,"無法取得每集的連結"
-    if len(a_tags) == 0:
-        print("無法取得漫畫的連結")
-        raise Exception
+    assert len(a_tags) > 0,"無法取得每集的連結"
 
     volume_list = [ Volume(ROOT_URL+a_tag["href"] ,trim(a_tag.text),extract_total_page(a_tag.text)) for a_tag in a_tags]
 
