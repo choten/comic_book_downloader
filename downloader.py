@@ -182,14 +182,12 @@ def app_start():
     程式起始點
     """
     book_path = os.path.join(CURRENT_DIR,"comic book") #漫畫資料夾路徑
-    # menu_url = "http://www.dm5.com/manhua-dangxinelingqishi/"
     menu_url = input("請輸入漫畫網址:\n")
     
-    if is_menu_url_valid(menu_url) == False:
-        print("失敗! 漫畫網址格式錯誤")
-        input()
-        return
-    
+    while is_menu_url_valid(menu_url) == False:
+        print("失敗! 漫畫網址格式錯誤，請重新輸入")
+        menu_url = input("請輸入漫畫網址:\n")
+
     #初始化 web driver
     WEB = init_web_driver()
     WEB.create_options()
