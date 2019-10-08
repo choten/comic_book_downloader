@@ -35,12 +35,13 @@ def init_web_driver():
     # WEB = webdriver.Chrome(chrome_path)
     return (WEB)
 
-def crawl_menu_page(book_path,menu_url):
+def crawl_menu_page(WEB,book_path,menu_url):
     """
     爬 menu 網頁，抓取標題、封面、每集volume的url，並回傳 (漫畫路徑,volumes列表)
     """
     html = requests.get(menu_url)
     soup = BeautifulSoup(html.text,"html.parser") #將網頁資料以html.parser
+    # print(html.text)
 
     #取得漫畫 title
     p_tag = soup.select_one("div.banner_detail_form > div.info > p.title")
@@ -59,7 +60,15 @@ def crawl_menu_page(book_path,menu_url):
 
     #取得 volumes 連結
     a_tags = soup.select("div #chapterlistload li > a")
-    assert len(a_tags) > 0,"無法取得每集的連結"
+    if len(a_tags) <= 0 :
+        #代表menu頁的子連結為ajax 產生，得用 Selenium 來抓
+        WEB.get(menu_url)
+        a_tags = WEB.find_elements_by_css_selector(("#chapterlistload > li > a"))
+        
+        assert len(a_tags) > 0,"無法取得每集的連結"
+        #部分隱藏起來的連結的txt為空，會造成名稱取值的問題
+
+
 
     volume_list = [ Volume(ROOT_URL+a_tag["href"] ,trim(a_tag.text),extract_total_page(a_tag.text)) for a_tag in a_tags]
 
@@ -192,7 +201,7 @@ def app_start():
     WEB = init_web_driver()
     WEB.create_options()
     
-    result = crawl_menu_page(book_path,menu_url)
+    result = crawl_menu_page(WEB,book_path,menu_url)
     book_path = result[0]
     volume_list = result[1]
     volume_list.reverse()
