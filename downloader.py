@@ -7,8 +7,6 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.action_chains import ActionChains
 from opencc import OpenCC
 import timeit
 from showprocess import ShowProcess
@@ -31,10 +29,9 @@ def init_web_driver():
     chrome_options = Options()
     chrome_options.add_argument('load-extension=' + path_to_extension)
     chrome_options.add_argument('--ignore-certificate-errors')
-    WEB = webdriver.Chrome(chrome_path,options=chrome_options)
-    WEB.set_window_size(100,100)
-    WEB.minimize_window()
-    return (WEB)
+    browser = webdriver.Chrome(chrome_path,options=chrome_options)
+    browser.set_window_size(100,100)
+    return (browser)
 
 def crawl_menu_page(WEB,book_path,menu_url):
     """
@@ -201,9 +198,13 @@ def app_start():
     #初始化 web driver
     browser = init_web_driver()
     browser.create_options()
-    # ActionChains(browser).key_down(Keys.CONTROL).send_keys("t").key_up(Keys.CONTROL).perform()
-    tab_list = browser.window_handles
-    browser.switch_to_window(tab_list[0])
+
+    #多開三個分頁，共五個分頁
+    for _ in range(3):
+        browser.execute_script("window.open('about:blank');")
+    TAB_LIST = browser.window_handles
+    browser.switch_to_window(TAB_LIST[0])
+    browser.minimize_window()
 
     result = crawl_menu_page(browser,book_path,menu_url)
     book_path = result[0]
