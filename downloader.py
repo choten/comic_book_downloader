@@ -7,6 +7,8 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
 from opencc import OpenCC
 import timeit
 from showprocess import ShowProcess
@@ -32,7 +34,6 @@ def init_web_driver():
     WEB = webdriver.Chrome(chrome_path,options=chrome_options)
     WEB.set_window_size(100,100)
     WEB.minimize_window()
-    # WEB = webdriver.Chrome(chrome_path)
     return (WEB)
 
 def crawl_menu_page(WEB,book_path,menu_url):
@@ -74,14 +75,14 @@ def crawl_menu_page(WEB,book_path,menu_url):
 
     return (book_path,volume_list)
 
-def download_volume(WEB,book_url,dir_path,total_page):
+def download_volume(browser,book_url,dir_path,total_page):
     """
     下載這集的漫畫
     """
-    WEB.get(book_url)
+    browser.get(book_url)
     
     #下載第一頁的圖片
-    img_url = WEB.find_element_by_id('cp_image').get_attribute("src")
+    img_url = browser.find_element_by_id('cp_image').get_attribute("src")
     refer = book_url
     pic_path = os.path.join(dir_path,'1.png')
     download_img(img_url,pic_path,refer)
@@ -92,20 +93,20 @@ def download_volume(WEB,book_url,dir_path,total_page):
 
     #下載其他頁的圖片
     for pag_num,url in enumerate(url_list):
-        crawl_book_page(WEB,url,dir_path,pag_num)
+        crawl_book_page(browser,url,dir_path,pag_num)
         PROCESS_BAR.show_process()
 
-def crawl_book_page(WEB,book_url,dir_path,pag_num):
+def crawl_book_page(browser,book_url,dir_path,pag_num):
     """
-    前往url網址，爬取圖片的url並下載 
+    前往 url 網址，爬取圖片的 url 並下載 
     """
-    WEB.get(book_url)
+    browser.get(book_url)
     try:
-        WebDriverWait(WEB, 10).until(
+        WebDriverWait(browser, 10).until(
             EC.presence_of_element_located((By.ID, "cp_image"))
         )
         #下載漫畫的圖片
-        img_url = WEB.find_element_by_id('cp_image').get_attribute("src")
+        img_url = browser.find_element_by_id('cp_image').get_attribute("src")
         refer = book_url
         download_img(img_url,os.path.join(dir_path,str(pag_num+2)+'.png'),refer)
     except:
@@ -198,10 +199,13 @@ def app_start():
         menu_url = input("請輸入漫畫網址:\n")
 
     #初始化 web driver
-    WEB = init_web_driver()
-    WEB.create_options()
-    
-    result = crawl_menu_page(WEB,book_path,menu_url)
+    browser = init_web_driver()
+    browser.create_options()
+    # ActionChains(browser).key_down(Keys.CONTROL).send_keys("t").key_up(Keys.CONTROL).perform()
+    tab_list = browser.window_handles
+    browser.switch_to_window(tab_list[0])
+
+    result = crawl_menu_page(browser,book_path,menu_url)
     book_path = result[0]
     volume_list = result[1]
     volume_list.reverse()
@@ -217,9 +221,9 @@ def app_start():
         #檢查目錄有沒有此資料夾，若無則新增資料夾
         dir_path = create_directory(book_path,book.title)
 
-        download_volume(WEB,book.book_url,dir_path,book.total_page)        
+        download_volume(browser,book.book_url,dir_path,book.total_page)        
     else:    
-        WEB.close()
+        browser.close()
 
 def test():
     """
@@ -228,14 +232,15 @@ def test():
     t = timeit.timeit(stmt="app_start()", setup="from  __main__ import app_start", number=1)
     print(t)
 
-CURRENT_DIR = os.getcwd() #程式所在路徑
-ROOT_URL = "http://www.dm5.com" #網頁的根目錄
-infoDone = '下載完成\n 漫畫存放位置: '
-PROCESS_BAR = ShowProcess(10,infoDone)
+if __name__=='__main__':
+    CURRENT_DIR = os.getcwd() #程式所在路徑
+    ROOT_URL = "http://www.dm5.com" #網頁的根目錄
+    infoDone = '下載完成\n 漫畫存放位置: '
+    PROCESS_BAR = ShowProcess(10,infoDone)
 
-try:
-    app_start()
-except Exception as e:
-    print("下載失敗")
-    print(e)
-    input() 
+    try:
+        app_start()
+    except Exception as e:
+        print("下載失敗")
+        print(e)
+        input() 
