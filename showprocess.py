@@ -3,7 +3,7 @@ import sys, time
 
 class ShowProcess():
     """
-    顯示處理進度的類
+    顯示處理進度的類\n
     呼叫該類相關函式即可實現處理進度的顯示
     """
     i = 0 # 當前的處理進度
