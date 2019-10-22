@@ -21,7 +21,6 @@ class Volume:
         self.book_url = href
         self.title = txt
         self.total_page = total_page
-
 def init_web_driver():
     """
     初始化 web driver
@@ -36,10 +35,9 @@ def init_web_driver():
     browser = webdriver.Chrome(chrome_path,options=chrome_options,desired_capabilities=caps)
     browser.set_window_size(100,100)
     return (browser)
-
-def crawl_menu_page(WEB,book_path,menu_url):
+def crawl_menu_page(book_path,menu_url):
     """
-    爬 menu 網頁，抓取標題、封面、每集volume的url，並回傳 (漫畫路徑,volumes列表)
+    爬 menu 網頁，抓取標題、封面、每集 volume 的 url，並回傳 (漫畫路徑,volumes列表)
     """
     html = requests.get(menu_url)
     soup = BeautifulSoup(html.text,"html.parser") #將網頁資料以html.parser
@@ -64,26 +62,23 @@ def crawl_menu_page(WEB,book_path,menu_url):
     a_tags = soup.select("div #chapterlistload li > a")
     if len(a_tags) <= 0 :
         #代表menu頁的子連結為ajax 產生，得用 Selenium 來抓
-        WEB.get(menu_url)
-        a_tags = WEB.find_elements_by_css_selector(("#chapterlistload > li > a"))
+        BROWSER.get(menu_url)
+        a_tags = BROWSER.find_elements_by_css_selector(("#chapterlistload > li > a"))
         
         assert len(a_tags) > 0,"無法取得每集的連結"
         #部分隱藏起來的連結的txt為空，會造成名稱取值的問題
 
-
-
     volume_list = [ Volume(ROOT_URL+a_tag["href"] ,trim(a_tag.text),extract_total_page(a_tag.text)) for a_tag in a_tags]
 
     return (book_path,volume_list)
-
-def download_volume(browser,TAB_LIST,book_url,dir_path,total_page):
+def download_volume(book_url,dir_path,total_page):
     """
-    下載這集的漫畫
+    下載此集的漫畫
     """
-    browser.get(book_url)
+    BROWSER.get(book_url)
     
     #下載第一頁的圖片
-    img_url = browser.find_element_by_id('cp_image').get_attribute("src")
+    img_url = BROWSER.find_element_by_id('cp_image').get_attribute("src")
     refer = book_url
     pic_path = os.path.join(dir_path,'1.png')
     download_img(img_url,pic_path,refer)
@@ -92,58 +87,38 @@ def download_volume(browser,TAB_LIST,book_url,dir_path,total_page):
     #取得其他頁數的連結
     url_list = create_page_url_list(book_url,total_page)
 
-    #下載其他頁的圖片
-    # for pag_num,url in enumerate(url_list):
-    #     crawl_book_page(browser,url,dir_path,pag_num)
-    #     PROCESS_BAR.show_process()
-
+    #五個分頁輪流下載
     tab_len = len(TAB_LIST)
     m = math.ceil(len(url_list)/tab_len) + 1
     for i in range(m):
         for j in range(tab_len):
-            current_page = tab_len*i+j
-            if current_page >= len(url_list) + tab_len:
+            count = tab_len*i+j
+            if count >= len(url_list) + tab_len:
                 break
 
-            browser.switch_to.window(TAB_LIST[j])
+            BROWSER.switch_to.window(TAB_LIST[j])
 
             if i != 0: #第一輪不下載
-                pag_num = current_page - tab_len
-                crawl_img(browser,book_url,dir_path,pag_num)
+                pag_num = count - tab_len
+                crawl_img(book_url,dir_path,pag_num)
                 PROCESS_BAR.show_process() 
 
-            if current_page < len(url_list):
-                browser.get(url_list[current_page])
-
-
-def crawl_img(browser,book_url,dir_path,pag_num):
+            if count < len(url_list):
+                BROWSER.get(url_list[count])
+def crawl_img(book_url,dir_path,pag_num):
+    """
+    爬取圖片 url，並下載
+    """
     try:
-        WebDriverWait(browser, 10).until(
+        WebDriverWait(BROWSER, 10).until(
             EC.presence_of_element_located((By.ID, "cp_image"))
         )
         #下載漫畫的圖片
-        img_url = browser.find_element_by_id('cp_image').get_attribute("src")
+        img_url = BROWSER.find_element_by_id('cp_image').get_attribute("src")
         refer = book_url
         download_img(img_url,os.path.join(dir_path,str(pag_num+2)+'.png'),refer)
     except:
         print(book_url+'下載失敗')
-
-# def crawl_book_page(browser,book_url,dir_path,pag_num):
-#     """
-#     前往 url 網址，爬取圖片的 url 並下載 
-#     """
-#     browser.get(book_url)
-#     try:
-#         WebDriverWait(browser, 10).until(
-#             EC.presence_of_element_located((By.ID, "cp_image"))
-#         )
-#         #下載漫畫的圖片
-#         img_url = browser.find_element_by_id('cp_image').get_attribute("src")
-#         refer = book_url
-#         download_img(img_url,os.path.join(dir_path,str(pag_num+2)+'.png'),refer)
-#     except:
-#         print(book_url+'下載失敗')
-
 def create_page_url_list(book_url,total_page):
     """
     製造其他頁數的連結
@@ -154,28 +129,25 @@ def create_page_url_list(book_url,total_page):
     url_list = [url_template + str(num+2) for num in range(total_page-1)]
 
     return (url_list)
-
-def download_img(img_url,pic_path,referer):
+def download_img(img_url,pic_path,current_url):
     """
-    下載圖片，referer : 當前網頁的url，requset 時要放在 header
+    下載圖片
     """
-    headers = {'referer':referer,'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36'}
+    headers = {'referer':current_url,'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36'}
     pic = requests.get(img_url,headers = headers)
     tmp_img = pic.content
     pic_out = open(pic_path,'wb')
     pic_out.write(tmp_img)
     pic_out.close()
-
 def create_directory(book_path,dir_name):
     """
-    檢查book_path 之下有沒有此 [dir_name] 資料夾，若無則新增，並回傳新增後的路徑
+    檢查 book_path 之下有沒有此 [dir_name] 資料夾，若無則新增，並回傳新增後的路徑
     """
     path = os.path.join(book_path,dir_name)
     if not os.path.isdir(path):
         os.mkdir(path)
 
     return (path)
-
 def trim(str_input):
     """
     去除空白字元，並且簡體轉繁體
@@ -183,14 +155,6 @@ def trim(str_input):
     trimed_input = re.sub(r'\s','',str_input)
     str_output = convert_s2t(trimed_input)
     return (str_output)
-
-def extract_total_page(str_title):
-    """
-    從漫畫標題擷取出總頁數
-    """
-    totalPage = int(re.findall(r'（(\d{1,3})P）|$',str_title)[0])
-    return (totalPage)
-
 def convert_s2t(str_input):
     """
     簡轉繁，並轉換大陸用語為台灣用語
@@ -198,7 +162,12 @@ def convert_s2t(str_input):
     cc = OpenCC('s2twp') #設定簡轉繁，並轉換大陸用語為台灣用語
     str_output = cc.convert(str_input)
     return (str_output)
-
+def extract_total_page(str_title):
+    """
+    從漫畫標題擷取出總頁數
+    """
+    totalPage = int(re.findall(r'（(\d{1,3})P）|$',str_title)[0])
+    return (totalPage)
 def is_menu_url_valid(menu_url):
     """
     驗證 menu url 格式是否正確
@@ -209,49 +178,57 @@ def is_menu_url_valid(menu_url):
         return False
     else:
         return True
-
 def sum_total_step(volume_list):
     """
     計算漫畫總張數，給進度條計算用
     """
-    total_stap = 0
+    total_step = 0
     for book in volume_list:
-        total_stap += book.total_page
-    return (total_stap)
+        total_step += book.total_page
+    return (total_step)
 
-def app_start():
+def app_start(menu_url = None):
     """
     程式起始點
     """
+    global CURRENT_DIR
+    CURRENT_DIR = os.getcwd() #程式所在路徑
+    global ROOT_URL
+    ROOT_URL = "http://www.dm5.com" #網頁的根目錄
+    
     book_path = os.path.join(CURRENT_DIR,"comic book") #漫畫資料夾路徑
-    # menu_url = input("請輸入漫畫網址:\n")
-    menu_url = 'http://www.dm5.com/manhua-dangxinelingqishi/'
+
+    if menu_url == None:
+        menu_url = input("請輸入漫畫網址:\n")
     
     while is_menu_url_valid(menu_url) == False:
         print("失敗! 漫畫網址格式錯誤，請重新輸入")
         menu_url = input("請輸入漫畫網址:\n")
 
     #初始化 web driver
-    browser = init_web_driver()
-    browser.create_options()
+    global BROWSER
+    BROWSER = init_web_driver()
+    BROWSER.create_options()
 
     #多開三個分頁，共五個分頁
     for _ in range(3):
-        browser.execute_script("window.open('about:blank');")
+        BROWSER.execute_script("window.open('about:blank');")
 
-    TAB_LIST = browser.window_handles
-    browser.switch_to.window(TAB_LIST[0])
-    # browser.minimize_window()
+    global TAB_LIST
+    TAB_LIST = BROWSER.window_handles
+    BROWSER.switch_to.window(TAB_LIST[0])
+    # BROWSER.minimize_window()
 
-    result = crawl_menu_page(browser,book_path,menu_url)
+    result = crawl_menu_page(book_path,menu_url)
     book_path = result[0]
     volume_list = result[1]
     volume_list.reverse()
 
     #初始化進度條物件參數
+    infoDone = '下載完成!\n 漫畫存放位置: \n' + book_path
+    global PROCESS_BAR
     max_steps = sum_total_step(volume_list)
-    PROCESS_BAR.max_steps = max_steps
-    PROCESS_BAR.infoDone += book_path
+    PROCESS_BAR = ShowProcess(max_steps,infoDone)
     print("下載進度")
     PROCESS_BAR.show_process(0)
     
@@ -259,27 +236,21 @@ def app_start():
         #檢查目錄有沒有此資料夾，若無則新增資料夾
         dir_path = create_directory(book_path,book.title)
 
-        download_volume(browser,TAB_LIST,book.book_url,dir_path,book.total_page)
+        download_volume(book.book_url,dir_path,book.total_page)
     else:    
-        browser.quit()
+        BROWSER.quit()
 
 def test():
     """
     測試程式碼
     """
-    t = timeit.timeit(stmt="app_start()", setup="from  __main__ import app_start", number=1)
+    t = timeit.timeit(stmt="app_start('http://www.dm5.com/manhua-dangxinelingqishi/')", setup="from downloader import app_start", number=1)
     print(t)
 
-if __name__=='__main__':
-    CURRENT_DIR = os.getcwd() #程式所在路徑
-    ROOT_URL = "http://www.dm5.com" #網頁的根目錄
-    infoDone = '下載完成!\n 漫畫存放位置: \n'
-    PROCESS_BAR = ShowProcess(10,infoDone)
-
-    try:
-        # app_start()
-        test()
-    except Exception as e:
-        print("下載失敗")
-        print(e)
-        input() 
+try:
+    # app_start()
+    test()
+except Exception as e:
+    print("下載失敗")
+    print(e)
+    input() 
